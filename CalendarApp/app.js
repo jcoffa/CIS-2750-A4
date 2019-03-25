@@ -11,6 +11,19 @@ const fileUpload = require('express-fileupload');
 
 app.use(fileUpload());
 
+// MySQL connection
+const mysql = require('mysql');
+
+const connection = mysql.createConnection({
+    host     : 'dursley.socs.uoguelph.ca',
+    user     : 'jcoffa',
+    password : '1007320',
+    database : 'jcoffa'
+});
+
+// TODO uncomment once you're actually ready to work with the database
+//connection.connect();
+
 // Minimization
 const fs = require('fs');
 const JavaScriptObfuscator = require('javascript-obfuscator');
