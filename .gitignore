@@ -1,0 +1,7 @@
+*.pdf
+*.zip
+*.so
+vgcore*
+node_modules
+CalendarApp/uploads/*
+CalendarApp/parser/bin/
