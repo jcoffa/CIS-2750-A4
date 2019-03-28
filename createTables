@@ -1,0 +1,30 @@
+create table FILE (
+cal_id INT AUTO_INCREMENT NOT NULL,
+file_Name VARCHAR(60) NOT NULL,
+version INT NOT NULL,
+prod_id VARCHAR(256) NOT NULL,
+PRIMARY KEY (cal_id));
+
+
+create table EVENT (
+event_id INT AUTO_INCREMENT NOT NULL,
+summary VARCHAR(1024),
+start_time DATETIME NOT NULL,
+location VARCHAR(60),
+organizer VARCHAR(256),
+cal_file INT NOT NULL,
+PRIMARY KEY (event_id),
+FOREIGN KEY (cal_file) REFERENCES FILE (cal_id) ON DELETE CASCADE);
+
+
+create table ALARM (
+alarm_id INT AUTO_INCREMENT NOT NULL,
+action VARCHAR(256) NOT NULL,
+`trigger` VARCHAR(256) NOT NULL,
+event INT NOT NULL,
+PRIMARY KEY (alarm_id),
+FOREIGN KEY (event) REFERENCES EVENT (event_id) ON DELETE CASCADE);
+
+
+
+"trigger" is a reserved keyword, so it requires the backticks to make it a column name, i.e. `trigger`
