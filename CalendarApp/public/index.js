@@ -291,7 +291,7 @@ function createEvent(formData) {
 function createCalendar(formData) {
     var toReturn = {
         "version": 2,
-        "prodID": (formData.productID == undefined || formData.productID == "") ? "-//Joseph Coffa/CIS*2750 iCalendar File Manager V1.0//EN" : formData.productID,
+        "prodID": (formData.productID == undefined || formData.productID == "") ? "-//Joseph Coffa/CIS*2750 iCalendar File Manager V1.1//EN" : formData.productID,
         "numProps": 2,
         "numEvents": 1,
         "properties": [],
@@ -326,6 +326,33 @@ $(document).ready(function() {
             errorMsg('Encountered an error while loading saved .ics files', error);
         }
     }); 
+
+
+
+
+
+    /************************************
+     * Require a log in to the database *
+     ************************************/
+    if (!($('#loginButton').hasClass('standOut'))) {
+       $('#loginButton').addClass('standOut')
+    }
+    $('#storeFilesButton').prop('disabled', true);
+    $('#clearDatabaseButton').prop('disabled', true);
+    $('#displayDBStatusButton').prop('disabled', true);
+    $('#executeQueryButton').prop('disabled', true);
+
+
+
+
+
+    /************************************************
+     * Event Listeners Relating to the Status Panel *
+     ************************************************/
+    $('#clearStatusButton').click(function() {
+        $(this).blur();
+        clearText('statusText');
+    });
 
 
 
@@ -459,7 +486,7 @@ $(document).ready(function() {
         var eventJ = createEvent(formData);
 
         $.ajax({
-            type: "GET",
+            type: "POST",
             url: "/writeCalendarJSON",
             data: {
                 "filename": filename,
@@ -517,7 +544,7 @@ $(document).ready(function() {
         var filename = $('#fileSelector').find(':selected').val();
 
         $.ajax({
-            type: "GET",
+            type: "POST",
             url: "/addEvent",
             data: {
                 "filename": filename,
@@ -600,4 +627,141 @@ $(document).ready(function() {
         $('#viewAlarmsModal').css('display', 'none');
         $('#eventAlarmBody').empty();
     });
+
+
+
+
+
+    /*****************************************************
+     * Assignment 4 Functionality : Database Integration *
+     *****************************************************/
+
+    // Login to the MySQL Database
+    $('#loginButton').click(function() {
+        $(this).blur();
+        $('#databaseLoginModal').css('display', 'block');
+    });
+    $('#closeModalLogin').click(function() {
+        $(this).blur();
+        $('#databaseLoginModal').css('display', 'none');
+    });
+
+
+    // Login button
+    $('#submitLogin').click(function(e) {
+        e.preventDefault();
+        $(this).blur();
+
+        var formData = getFormData($('#loginForm'));
+
+        $.ajax({
+            url: '/databaseLogin',
+            type: 'POST',
+            data: formData,
+            success: function() {
+                console.log("Successfully logged into database using endpoint '/databaseLogin'!");
+                $('#databaseLoginModal').css('display', 'none');
+
+                // Remove the standout style from the login button
+                if ($('#loginButton').hasClass('standOut')) {
+                    $('#loginButton').removeClass('standOut');
+                }
+
+                // Disable the login button
+                $('#loginButton').prop('disabled', true);
+
+                // enable all the database buttons
+                $('#storeFilesButton').prop('disabled', false);
+                $('#clearDatabaseButton').prop('disabled', false);
+                $('#displayDBStatusButton').prop('disabled', false);
+                $('#executeQueryButton').prop('disabled', false);
+            },
+            error: function(err) {
+                alert('Could not login to database with those credentials.\nPlease ensure that you have correctly entered your username, password, and database name, and try again.');
+            }
+        });
+    });
+
+
+    // Load all files stored locally in /uploads/ dir into the database
+    $('#storeFilesButton').click(function() {
+        $(this).blur();
+        // Get list of every file from the /uploads/ directory
+        $.ajax({
+            url: '/uploadsContents',
+            type: 'GET',
+            success: function(fileNames) {
+                for (var filename of fileNames) {
+                    $.ajax({
+                        url: '/insertIntoDB/' + filename,
+                        type: 'GET',
+                        success: function(successFilename) {
+                            statusMsg('Successfully added ' + successFilename + ' to the database');
+                        },
+                        error: function(err) {
+                            errorMsg('Encountered error while putting a file into the database', err);
+                        }
+                    });
+                }
+            },
+            error: function(err) {
+                errorMsg('Encountered error while loading all saved .ics files', err);
+            }
+        });
+    });
+
+
+    // Clear database
+    $('#clearDatabaseButton').click(function() {
+        $(this).blur();
+        if (!confirm('Are you SURE you want to delete everything in the database?')) {
+            return;
+        }
+
+        $.ajax({
+            url: '/clearDB',
+            type: 'GET',
+            success: function() {
+                statusMsg('Successfully cleared the database');
+            },
+            error: function(err) {
+                errorMsg('Encountered error when trying to clear the database', err);
+            }
+        });
+    });
+
+
+    // Display DB status
+    $('#displayDBStatusButton').click(function() {
+        $(this).blur();
+        statusMsg('TODO replace this line with the database status');
+    });
+
+
+    // Execute query (open a modal)
+    $('#executeQueryButton').click(function() {
+        $(this).blur();
+        $('#executeQueryModal').css('display', 'block');
+    });
+    $('#closeModalQuery').click(function() {
+        (this).blur();
+        $('#executeQueryModal').css('display', 'none');
+    });
+
+
+
+
+
+    /***************************************
+     * Close database connection on unload *
+     ***************************************/
+     window.addEventListener('beforeunload', function() {
+        $.ajax({
+            url: '/disconnectDB',
+            type: 'GET',
+            success: function() {
+                console.log('Successfully closed database connection');
+            }
+        });
+     });
 });

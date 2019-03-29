@@ -52,7 +52,7 @@
 
         <div align="center" style="overflow-y:auto">
             <textarea id="statusText" cols="100" rows="4" name="Status Panel" placeHolder="Status Panel" readonly="readonly"></textarea>
-            <button type="button" onclick="clearText('statusText');">Clear</button>
+            <button id="clearStatusButton">Clear</button>
             <!--<button type="button" onclick="addText('statusText', 'new text');">Clear</button>-->
         </div>
 
@@ -155,9 +155,64 @@
 
 
 
+        <!-- ============ -->
+        <!-- A4 SQL Stuff -->
+        <!-- ============ -->
+        <hr>
+        <h4><u>Assignment 4 SQL Integration</u></h4>
+        <div align="center">
+            <button id="loginButton" class="standOut">Login to Database</button>
+            <button id="storeFilesButton" disabled>Store All Local Files Into Database</button>
+            <button id="clearDatabaseButton" disabled>Clear database</button>
+            <button id="displayDBStatusButton" disabled>Display Status of the Database</button>
+            <button id="executeQueryButton" disabled>Execute a Query on the Database</button>
+        </div>
+        <!-- There are also 2 modal windows associated with A4 functionality -->
+
+
+
+
+
+        <!-- Put some whitespace at the bottom of the page -->
+        <br>
+        <br>
         <!-- ====== -->
         <!-- MODALS -->
         <!-- ====== -->
+
+        <!-- 'Login to Database' Modal : A4 functionality-->
+        <div id="databaseLoginModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Login to Database</h2>
+                    <span id="closeModalLogin" class="close">X</span>
+                </div>
+                <div class="modal-body">
+                    <form id="loginForm">
+                        <label for="loginUsername">Username: </label>
+                        <input type="text" id="loginUsername" name="username"></input><br>
+                        <label for="loginPassword">Password: </label>
+                        <input type="password" id="loginPassword" name="password"></input><br>
+                        <label for="loginDatabaseName">Database Name: </label>
+                        <input type="text" id="loginDatabaseName" name="databaseName"></input><br>
+                        <button id="submitLogin">Login</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- 'Execute Query' Modal : A4 Functionality -->
+        <div id="executeQueryModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Execute a Query</h2>
+                    <span id="closeModalQuery" class="close">X</span>
+                </div>
+                <div class="modal-body">
+                    TODO 6 Query options
+                </div>
+            </div>
+        </div>
 
         <!-- 'Add Event to Current Calendar' Modal -->
         <div id="addEventModal" class="modal">
