@@ -322,6 +322,8 @@ app.get('/clearDB', function(req, res) {
             return res.status(500).send(err);
         }
     });
+
+    res.status(200).send('Cleared database');
 });
 
 
