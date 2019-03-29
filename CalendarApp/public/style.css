@@ -109,6 +109,13 @@ button.standOut:focus {
     border-color: #B07711;
 }
 
+/* Disabled button is muted */
+button:disabled, button[disabled] {
+    background-color: #999999;
+    border-color: #888888;
+    color: black;
+}
+
 /* Make rows of elements better */
 .clearfix::after {
     content: "";
