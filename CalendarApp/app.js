@@ -24,18 +24,10 @@ app.use(bodyParser.urlencoded({extended: true}));   // https://www.npmjs.com/pac
 
 // MySQL connection
 const mysql = require('mysql');
+// Variable to represent the mysql connection that will be usued in all the query endpoints.
+// The user must login before using any of the other query endpoints.
 var connection;
 
-/*
-const connection = mysql.createConnection({
-    host     : 'dursley.socs.uoguelph.ca',
-    user     : 'jcoffa',
-    password : '1007320',
-    database : 'jcoffa'
-});
-
-connection.connect();
-//*/
 
 // Minimization
 const fs = require('fs');
@@ -214,81 +206,98 @@ app.get('/insertIntoDB/:filename', function(req, res) {
         return res.status(400).send('Missing filename (File name relative to uploads/ directory of .ics file) parameter');
     }
 
-    var calJSON = lib.createCalendarJSON(__dirname + '/uploads/' + req.params.filename);
-    console.log("\nIn /insertIntoDB/" + req.params.filename + ", received Calendar JSON: \n\"" + calJSON + "\"\n");
+    let calJSON = lib.createCalendarJSON(__dirname + '/uploads/' + req.params.filename);
+    //console.log("\nIn /insertIntoDB/" + req.params.filename + ", received Calendar JSON: \n\"" + calJSON + "\"\n");
 
     if (calJSON === undefined) {
         return res.status(500).send('calJSON was undefined');
     }
 
+    let cal;
     try {
-        var cal = JSON.parse(calJSON);
+        cal = JSON.parse(calJSON);
     } catch (e) {
         console.log('\nFatal error in JSON.parse(): the JSON that broke it: ' + retStr);
         return res.status(500).send('Fatal error when parsing JSON created from "' + req.params.filename + '"');
     }
 
     // Insert the calendar into the FILE table
-    connection.query("INSERT INTO FILE (file_Name, version, prod_id) VALUES ('" + req.params.filename + "'," + cal.version + ",'" + cal.prodID + "')", function(err, rows, fields) {
+    connection.query("INSERT INTO FILE (file_Name,version,prod_id) VALUES ('" + req.params.filename + "'," + cal.version + ",'" + cal.prodID + "')", function(err, rows, fields) {
         if (err) {
             console.log('error when inserting calendar into FILE table: ' + err);
             return res.status(500).send(err);
         }
-        console.log("Successfully added calendar \"" + req.params.filename + "\" to FILE table in database");
+        //console.log("Successfully added calendar \"" + req.params.filename + "\" to FILE table in database\n");
 
         // Add all the events from the calendar into the EVENT table
-        for (var calEvent of cal.events) {
-            console.log('Current working event (from ' + req.params.filename + '): ' + JSON.stringify(calEvent) + '\n');
+        for (let calEvent of cal.events) {
+            //console.log('Current working event (from ' + req.params.filename + '): ' + JSON.stringify(calEvent) + '\n');
 
             // This query is quite long, so I'm building the string from scratch in an attempt to improve readability
-            var query = "INSERT INTO EVENT (summary,start_time,location,organizer,cal_file) VALUES (";
-            query += "'" + (calEvent.summary === undefined || calEvent.summary === "" ? 'null' : calEvent.summary.replace("'", "''")) + "'";
-            query += ',';
-            query += "'" + calEvent.startDT.date.slice(0, 4) + '-' + calEvent.startDT.date.slice(4, 6) + '-' + calEvent.startDT.date.slice(6);
-            query += ' ' + calEvent.startDT.time.slice(0, 2) + ':' + calEvent.startDT.time.slice(2, 4) + ':' + calEvent.startDT.time.slice(4) + "'";
-            query += ',';
-            query += "'" + (calEvent.location === undefined ? 'null' : calEvent.location) + "'";
-            query += ',';
-            query += "'" + (calEvent.organizer === undefined ? 'null' : calEvent.organizer) + "'";
-            query += ',';
-            query += rows.insertId;
-            query += ')';
+            let evtQuery = "INSERT INTO EVENT (summary,start_time,location,organizer,cal_file) VALUES ";
+            evtQuery += "(" + (calEvent.summary === undefined || calEvent.summary === "" ? 'NULL' : "'" + calEvent.summary.replace("'", "''") + "'");
+            evtQuery += ',';
+            evtQuery += "'" + calEvent.startDT.date.slice(0, 4) + '-' + calEvent.startDT.date.slice(4, 6) + '-' + calEvent.startDT.date.slice(6);
+            evtQuery += ' ' + calEvent.startDT.time.slice(0, 2) + ':' + calEvent.startDT.time.slice(2, 4) + ':' + calEvent.startDT.time.slice(4) + "'";
+            evtQuery += ',';
+            evtQuery += (calEvent.location === undefined ? 'NULL' : "'" + calEvent.location.replace("'", "''") + "'");
+            evtQuery += ',';
+            evtQuery += (calEvent.organizer === undefined ? 'NULL' : "'" + calEvent.organizer.replace("'", "''") + "'");
+            evtQuery += ',';
+            evtQuery += rows.insertId;
+            evtQuery += "),";
+            // Chop off the trailing comma
+            evtQuery = evtQuery.substring(0, evtQuery.length - 1);
 
-            //console.log("\nquery to add event: " + query);
+            //console.log("\nquery to add event: " + evtQuery);
 
-            console.log("Event JSON right before for connection.query (from " + req.params.filename + "): " + JSON.stringify(calEvent) + '\n');
-            // FIXME for some reason, the alarms array is fine before entering the connection.query,
-            //       but is always empty within the query.
-            connection.query(query, function(err, rows, fields) {
+            // For some reason, the "alarms" array is ALWAYS empty after entering this next query,
+            // so we have to build the alarm insertion query ahead of time. It is very annoying and inefficient.
+            let alarmQuery;
+            if (calEvent.alarms.length !== 0) {
+                alarmQuery = "INSERT INTO ALARM (action,`trigger`,event) VALUES "
+                let toAdd = "";
+                for (let alarm of calEvent.alarms) {
+                    toAdd += "(" + "'" + alarm.action + "'";
+                    toAdd += ',';
+                    toAdd += "'" + alarm.trigger + "'";
+                    toAdd += ',';
+                    toAdd += '____REPLACEWITHID____';   // we won't know the insertId until afer entering the query, so we have to flag it somehow
+                    toAdd += "),";
+                }
+                // remove trailing comma and add to query, if it exists
+                if (toAdd !== "") {
+                    toAdd = toAdd.substring(0, toAdd.length - 1);
+                    alarmQuery += toAdd;
+                }
+            }
+
+            //console.log("Event JSON right before for connection.query (from " + req.params.filename + "): " + JSON.stringify(calEvent) + '\n');
+            connection.query(evtQuery, function(err, rows, fields) {
                 if (err) {
                     console.log('error when inserting event into EVENT table: ' + err);
                     return res.status(500).send(err);
                 }
-                console.log("Successfully added event from file \"" + req.params.filename + "\" to EVENT table in database");
+                //console.log("Successfully added event from file \"" + req.params.filename + "\" to EVENT table in database\n");
 
-                // Add all the alarms from the event into the ALARM table
-                console.log("Event JSON right before for loop (from " + req.params.filename + "): " + JSON.stringify(calEvent) + '\n');
+                // Add all the alarms from the event into the ALARM table.
+                // If the event had no alarms, then the alarmQuery string was never defined.
+                if (alarmQuery !== undefined) {
+                    // Replace the flag token with the primary key of this event
+                    alarmQuery = alarmQuery.replace(RegExp('____REPLACEWITHID____', "g"), rows.insertId);
 
-                // FIXME currently, this array is always empty for some reason (see FIXME above)
-                for (var alarm of calEvent.alarms) {
-                    query = "INSERT INTO ALARM (action,`trigger`,event) VALUES ("
-                    query += "'" + alarm.action + "'";
-                    query += ',';
-                    query += "'" + alarm.trigger + "'";
-                    query += ',';
-                    query += rows.insertId;
-                    query += ')';
+                    //console.log('Alarm query for the event ' + JSON.stringify(calEvent) + '\n' + alarmQuery + '\n');
 
-                    connection.query(query, function(err, rows, fields) {
+                    connection.query(alarmQuery, function(err, rows, fields) {
                         if (err) {
                             console.log('error when inserting alarm into ALARM table: ' + err);
                             return res.status(500).send(err);
                         }
 
-                        console.log("Successfully added alarm from file \"" + req.params.filename + "\" to ALARM table in database");
+                        //console.log("Successfully added alarm from file \"" + req.params.filename + "\" to ALARM table in database\n");
                     }); // End of insert Alarm into ALARM table
-                } // End of for..of loop iterating over Alarms in Event (FOR SOME REASON THE ARRAY IS ALWAYS EMPTY)
-            }); // End of insert Event into EVENt table
+                } // End of if statement determining whether the current working Event had any Alarms
+            }); // End of insert Event into EVENT table
         } // End of for..of loop iterating over Events in Calendar
     }); // End of insert Calendar into FILE table
 
