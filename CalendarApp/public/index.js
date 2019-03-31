@@ -691,7 +691,7 @@ $(document).ready(function() {
             url: '/uploadsContents',
             type: 'GET',
             success: function(fileNames) {
-                for (var filename of fileNames) {
+                fileNames.forEach(function(filename) {
                     $.ajax({
                         url: '/insertIntoDB/' + filename,
                         type: 'GET',
@@ -702,7 +702,7 @@ $(document).ready(function() {
                             errorMsg('Encountered error while putting a file into the database', err);
                         }
                     });
-                }
+                });
             },
             error: function(err) {
                 errorMsg('Encountered error while loading all saved .ics files', err);
