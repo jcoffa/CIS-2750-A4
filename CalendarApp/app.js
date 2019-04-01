@@ -176,6 +176,8 @@ app.post('/writeCalendarJSON', function(req, res) {
 
 
 //******************** Assignment 4 SQL Functionality ******************** 
+
+// Sets up the connection variable to the MySQL database
 app.post('/databaseLogin', function(req, res) {
     connection = mysql.createConnection({
         host     : 'dursley.socs.uoguelph.ca',
@@ -213,6 +215,7 @@ app.get('/insertIntoDB/:filename', function(req, res) {
         return res.status(500).send('calJSON was undefined');
     }
 
+    // Parse the calendar received from the backend
     let cal;
     try {
         cal = JSON.parse(calJSON);
@@ -220,6 +223,9 @@ app.get('/insertIntoDB/:filename', function(req, res) {
         console.log('\nFatal error in JSON.parse(): the JSON that broke it: ' + retStr);
         return res.status(500).send('Fatal error when parsing JSON created from "' + req.params.filename + '"');
     }
+
+
+
 
     // Insert the calendar into the FILE table
     connection.query("INSERT INTO FILE (file_Name,version,prod_id) VALUES ('" + req.params.filename + "'," + cal.version + ",'" + cal.prodID + "')", function(err, rows, fields) {
@@ -229,7 +235,7 @@ app.get('/insertIntoDB/:filename', function(req, res) {
         }
         //console.log("Successfully added calendar \"" + req.params.filename + "\" to FILE table in database\n");
 
-        // Add all the events from the calendar into the EVENT table
+        // Add all the events from the current calendar into the EVENT table
         for (let calEvent of cal.events) {
             //console.log('Current working event (from ' + req.params.filename + '): ' + JSON.stringify(calEvent) + '\n');
 
@@ -245,34 +251,10 @@ app.get('/insertIntoDB/:filename', function(req, res) {
             evtQuery += (calEvent.organizer === undefined ? 'NULL' : "'" + calEvent.organizer.replace("'", "''") + "'");
             evtQuery += ',';
             evtQuery += rows.insertId;
-            evtQuery += "),";
-            // Chop off the trailing comma
-            evtQuery = evtQuery.substring(0, evtQuery.length - 1);
+            evtQuery += ")";
 
             //console.log("\nquery to add event: " + evtQuery);
 
-            // For some reason, the "alarms" array is ALWAYS empty after entering this next query,
-            // so we have to build the alarm insertion query ahead of time. It is very annoying and inefficient.
-            let alarmQuery;
-            if (calEvent.alarms.length !== 0) {
-                alarmQuery = "INSERT INTO ALARM (action,`trigger`,event) VALUES "
-                let toAdd = "";
-                for (let alarm of calEvent.alarms) {
-                    toAdd += "(" + "'" + alarm.action + "'";
-                    toAdd += ',';
-                    toAdd += "'" + alarm.trigger + "'";
-                    toAdd += ',';
-                    toAdd += '____REPLACEWITHID____';   // we won't know the insertId until afer entering the query, so we have to flag it somehow
-                    toAdd += "),";
-                }
-                // remove trailing comma and add to query, if it exists
-                if (toAdd !== "") {
-                    toAdd = toAdd.substring(0, toAdd.length - 1);
-                    alarmQuery += toAdd;
-                }
-            }
-
-            //console.log("Event JSON right before for connection.query (from " + req.params.filename + "): " + JSON.stringify(calEvent) + '\n');
             connection.query(evtQuery, function(err, rows, fields) {
                 if (err) {
                     console.log('error when inserting event into EVENT table: ' + err);
@@ -280,23 +262,17 @@ app.get('/insertIntoDB/:filename', function(req, res) {
                 }
                 //console.log("Successfully added event from file \"" + req.params.filename + "\" to EVENT table in database\n");
 
-                // Add all the alarms from the event into the ALARM table.
-                // If the event had no alarms, then the alarmQuery string was never defined.
-                if (alarmQuery !== undefined) {
-                    // Replace the flag token with the primary key of this event
-                    alarmQuery = alarmQuery.replace(RegExp('____REPLACEWITHID____', "g"), rows.insertId);
-
-                    //console.log('Alarm query for the event ' + JSON.stringify(calEvent) + '\n' + alarmQuery + '\n');
-
-                    connection.query(alarmQuery, function(err, rows, fields) {
+                // Add all the alarms from the current event into the ALARM table.
+                for (let alarm of calEvent.alarms) {
+                    connection.query("INSERT INTO ALARM (action,`trigger`,event) VALUES ('" + alarm.action + "','" + alarm.trigger + "'," + rows.insertId + ")", function(err, rows, fields) {
                         if (err) {
-                            console.log('error when inserting alarm into ALARM table: ' + err);
+                            console.log('error when inserting into ALARM table: ' + err);
                             return res.status(500).send(err);
                         }
+                        //console.log('Successfully added alarm from file "' + req.params.filename + '" to ALARM table in database\n');
 
-                        //console.log("Successfully added alarm from file \"" + req.params.filename + "\" to ALARM table in database\n");
                     }); // End of insert Alarm into ALARM table
-                } // End of if statement determining whether the current working Event had any Alarms
+                } // End of for..of loop iterating over Alarms in the current Event
             }); // End of insert Event into EVENT table
         } // End of for..of loop iterating over Events in Calendar
     }); // End of insert Calendar into FILE table
@@ -306,33 +282,57 @@ app.get('/insertIntoDB/:filename', function(req, res) {
 });
 
 
+// Clears the FILE table, which in turn cascades into deleting the EVENT and ALARM table
 app.get('/clearDB', function(req, res) {
     if (connection === undefined) {
         return res.status(401).send('Not logged in to database: connection failed');
     }
 
-    connection.query("DELETE FROM ALARM", function(err, rows, fields) {
-        if (err) {
-            console.log('Error when clearing the ALARM table: ' + err);
-            return res.status(500).send(err);
-        }
-    });
-
-    connection.query("DELETE FROM EVENT", function(err, rows, fields) {
-        if (err) {
-            console.log('Error when clearing the EVENT table: ' + err);
-            return res.status(500).send(err);
-        }
-    });
-
     connection.query("DELETE FROM FILE", function(err, rows, fields) {
         if (err) {
-            console.log('Error when clearing the EVENT table: ' + err);
+            console.log('Error when cascade-deleting the FILE table: ' + err);
             return res.status(500).send(err);
         }
     });
 
     res.status(200).send('Cleared database');
+});
+
+
+// Returns the number of files, events, and alarms in the database
+app.get('/DBstatus', function(req, res) {
+    if (connection === undefined) {
+        return res.status(401).send('Not logged in to database: connection failed');
+    }
+
+    var toReturn = "Database has ";
+    connection.query("SELECT count(file_Name) AS count FROM FILE", function(err, results, fields) {
+        if (err) {
+            console.log('Encountered error when counting file_Name fields in the FILE table: ' + err)
+            return res.status(500).send(err);
+        }
+
+        toReturn += results[0].count + " files, ";
+
+        connection.query("SELECT count(event_id) AS count FROM EVENT", function(err, results, fields) {
+            if (err) {
+                console.log('Encountered error when counting event_id fields in the EVENT table: ' + err);
+                return res.status(500).send(err);
+            }
+
+            toReturn += results[0].count + " events, and ";
+
+                connection.query("SELECT count(alarm_id) AS count FROM ALARM", function(err, results, fields) {
+                if (err) {
+                    console.log('Encountered error when counting alarm_id fields in the ALARM table: ' + err);
+                    return res.status(500).send(err);
+                }
+
+                toReturn += results[0].count + " alarms";
+                res.status(200).send(toReturn);
+            });
+        }); 
+    }); 
 });
 
 
