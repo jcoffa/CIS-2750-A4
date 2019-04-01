@@ -734,7 +734,17 @@ $(document).ready(function() {
     // Display DB status
     $('#displayDBStatusButton').click(function() {
         $(this).blur();
-        statusMsg('TODO replace this line with the database status');
+        $.ajax({
+            url: '/DBstatus',
+            type: 'GET',
+            dataType: 'text',
+            success: function(data) {
+                statusMsg(data);
+            },
+            error: function(err) {
+                errorMsg('Encountered error when getting the status of the database', err);
+            }
+        });
     });
 
 
