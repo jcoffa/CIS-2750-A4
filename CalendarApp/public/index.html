@@ -167,15 +167,28 @@
             <button id="displayDBStatusButton" disabled>Display Status of the Database</button>
             <button id="executeQueryButton" disabled>Execute a Query on the Database</button>
         </div>
+        <br>
+        <h5>Execute Queries</h5>
+        <div>
+        <button id="allEventsQuery" disabled>Display All Events Sorted by Date</button><br>
+        <button id="allEventsFileQuery" disabled>Display All Events From Selected Calendar File to View</button><br>
+        <button id="allConflictsQuery" disabled>Display All Conflicting Events</button><br>
+        <button id="allAlarmsQuery" disabled>TODO Display All Alarms From Selected Calendar File to View</button><br>
+        <button id="allAlarmsSameTimeQuery" disabled>TODO Display All Alarms That Will Go Off at the Same Time</button><br>
+        <button id="allEventsSameDayQuery" disabled>TODO Display All Events Happening On a Given Day</button>
+        <label for="eventDay">Day to get events for: </label>
+        <input id="eventDay" type="date" name="date"></input>
+        </div>
         <!-- There are also 2 modal windows associated with A4 functionality -->
-
-
-
-
 
         <!-- Put some whitespace at the bottom of the page -->
         <br>
         <br>
+
+
+
+
+
         <!-- ====== -->
         <!-- MODALS -->
         <!-- ====== -->
@@ -201,15 +214,20 @@
             </div>
         </div>
 
-        <!-- 'Execute Query' Modal : A4 Functionality -->
-        <div id="executeQueryModal" class="modal">
+        <!-- The output of whatever query is entered goes here -->
+        <div id="queryOutputModal" class="modal">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h2>Execute a Query</h2>
+                    <h2>Query Output</h2>
                     <span id="closeModalQuery" class="close">X</span>
                 </div>
                 <div class="modal-body">
-                    TODO 6 Query options
+                    <table id="queryTable" width="100%">
+                        <thead id="queryTableHead">
+                        </thead>
+                        <tbody id="queryTableBody">
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
