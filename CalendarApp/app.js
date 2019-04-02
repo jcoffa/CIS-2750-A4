@@ -27,6 +27,7 @@ const mysql = require('mysql');
 // Variable to represent the mysql connection that will be usued in all the query endpoints.
 // The user must login before using any of the other query endpoints.
 var connection;
+var database;
 
 
 // Minimization
@@ -185,16 +186,81 @@ app.post('/databaseLogin', function(req, res) {
         password : req.body.password,
         database : req.body.databaseName
     });
+    database = req.body.databaseName;
 
     connection.connect(function(err) {
         if (err) {
             console.log('Encountered error when logging into database with creedentials: "' + JSON.stringify(req.body) + '"');
-            res.status(400).send(err);
+            res.status(400).send(err.sqlMessage);
             return;
         } else {
             res.status(200).send('Connected to database with the following credentials: "' + JSON.stringify(req.body) + '"');
         }
     });
+});
+
+
+// Checks if the tables have been created in the database. If they haven't, they are created.
+app.get('/createTables', function(req, res) {
+    if (connection === undefined) {
+        return res.status(401).send('Not logged in to database: connection failed');
+    }
+
+    connection.query("SELECT * FROM information_schema.tables WHERE table_schema='" + database + "' AND table_name='FILE' LIMIT 1", function(err, results, fields) {
+        if (err) {
+            console.log('Encountered error when checking if the FILE table exists');
+            return res.status(500).send(err.sqlMessage);
+        }
+
+        if (results.length == 0) {
+            connection.query("create table FILE (cal_id INT AUTO_INCREMENT NOT NULL,file_Name VARCHAR(60) NOT NULL,version INT NOT NULL,prod_id VARCHAR(256) NOT NULL,PRIMARY KEY (cal_id))", function(err, results, fields) {
+                if (err) {
+                    console.log('Encountered error when creating the FILE table: ' + err);
+                    return res.status(500).send(err.sqlMessage);
+                }
+
+                console.log('Created FILE table successfully');
+            });
+        }
+    });
+
+    connection.query("SELECT * FROM information_schema.tables WHERE table_schema='" + database + "' AND table_name='EVENT' LIMIT 1", function(err, results, fields) {
+        if (err) {
+            console.log('Encountered error when checking if the EVENT table exists');
+            return res.status(500).send(err.sqlMessage);
+        }
+
+        if (results.length === 0) {
+            connection.query("create table EVENT (event_id INT AUTO_INCREMENT NOT NULL,summary VARCHAR(1024),start_time DATETIME NOT NULL,location VARCHAR(60),organizer VARCHAR(256),cal_file INT NOT NULL,PRIMARY KEY (event_id),FOREIGN KEY (cal_file) REFERENCES FILE (cal_id) ON DELETE CASCADE)", function(err, results, fields) {
+                if (err) {
+                    console.log('Encountered error when creating the EVENT table: ' + err);
+                    return res.status(500).send(err.sqlMessage);
+                }
+
+                console.log('Created EVENT table successfully');
+            });
+        }
+    });
+
+    connection.query("SELECT * FROM information_schema.tables WHERE table_schema='" + database + "' AND table_name='ALARM' LIMIT 1", function(err, results, fields) {
+        if (err) {
+            console.log('Encountered error when checking if the ALARM table exists');
+            return res.status(500).send(err.sqlMessage);
+        }
+
+        if (results.length === 0) {
+            connection.query("create table ALARM (alarm_id INT AUTO_INCREMENT NOT NULL,action VARCHAR(256) NOT NULL,`trigger` VARCHAR(256) NOT NULL,event INT NOT NULL,PRIMARY KEY (alarm_id),FOREIGN KEY (event) REFERENCES EVENT (event_id) ON DELETE CASCADE)", function(err, results, fields) {
+                if (err) {
+                    console.log('Encountered error when creating the EVENT table: ' + err);
+                    return res.status(500).send(err.sqlMessage);
+                }
+
+                console.log('Created ALARM table successfully');
+            });
+        }
+    });
+
+    res.status(200).send('All tables are constructed');
 });
 
 
@@ -231,13 +297,17 @@ app.get('/insertIntoDB/:filename', function(req, res) {
     connection.query("INSERT INTO FILE (file_Name,version,prod_id) VALUES ('" + req.params.filename + "'," + cal.version + ",'" + cal.prodID + "')", function(err, rows, fields) {
         if (err) {
             console.log('error when inserting calendar into FILE table: ' + err);
-            return res.status(500).send(err);
+            return res.status(500).send(err.sqlMessage);
         }
         //console.log("Successfully added calendar \"" + req.params.filename + "\" to FILE table in database\n");
 
         // Add all the events from the current calendar into the EVENT table
         for (let calEvent of cal.events) {
             //console.log('Current working event (from ' + req.params.filename + '): ' + JSON.stringify(calEvent) + '\n');
+
+            // Find the location and organizer properties, if they exist
+            let evtLocation = calEvent.properties.find(prop => prop.propName.toLowerCase() === 'location');
+            let evtOrganizer = calEvent.properties.find(prop => prop.propName.toLowerCase() === 'organizer');
 
             // This query is quite long, so I'm building the string from scratch in an attempt to improve readability
             let evtQuery = "INSERT INTO EVENT (summary,start_time,location,organizer,cal_file) VALUES ";
@@ -246,9 +316,9 @@ app.get('/insertIntoDB/:filename', function(req, res) {
             evtQuery += "'" + calEvent.startDT.date.slice(0, 4) + '-' + calEvent.startDT.date.slice(4, 6) + '-' + calEvent.startDT.date.slice(6);
             evtQuery += ' ' + calEvent.startDT.time.slice(0, 2) + ':' + calEvent.startDT.time.slice(2, 4) + ':' + calEvent.startDT.time.slice(4) + "'";
             evtQuery += ',';
-            evtQuery += (calEvent.location === undefined ? 'NULL' : "'" + calEvent.location.replace("'", "''") + "'");
+            evtQuery += (evtLocation === undefined ? 'NULL' : "'" + evtLocation.propDescr.replace("'", "''") + "'");
             evtQuery += ',';
-            evtQuery += (calEvent.organizer === undefined ? 'NULL' : "'" + calEvent.organizer.replace("'", "''") + "'");
+            evtQuery += (evtOrganizer === undefined ? 'NULL' : "'" + evtOrganizer.propDescr.replace("'", "''") + "'");
             evtQuery += ',';
             evtQuery += rows.insertId;
             evtQuery += ")";
@@ -258,7 +328,7 @@ app.get('/insertIntoDB/:filename', function(req, res) {
             connection.query(evtQuery, function(err, rows, fields) {
                 if (err) {
                     console.log('error when inserting event into EVENT table: ' + err);
-                    return res.status(500).send(err);
+                    return res.status(500).send(err.sqlMessage);
                 }
                 //console.log("Successfully added event from file \"" + req.params.filename + "\" to EVENT table in database\n");
 
@@ -267,7 +337,7 @@ app.get('/insertIntoDB/:filename', function(req, res) {
                     connection.query("INSERT INTO ALARM (action,`trigger`,event) VALUES ('" + alarm.action + "','" + alarm.trigger + "'," + rows.insertId + ")", function(err, rows, fields) {
                         if (err) {
                             console.log('error when inserting into ALARM table: ' + err);
-                            return res.status(500).send(err);
+                            return res.status(500).send(err.sqlMessage);
                         }
                         //console.log('Successfully added alarm from file "' + req.params.filename + '" to ALARM table in database\n');
 
@@ -291,7 +361,7 @@ app.get('/clearDB', function(req, res) {
     connection.query("DELETE FROM FILE", function(err, rows, fields) {
         if (err) {
             console.log('Error when cascade-deleting the FILE table: ' + err);
-            return res.status(500).send(err);
+            return res.status(500).send(err.sqlMessage);
         }
     });
 
@@ -309,7 +379,7 @@ app.get('/DBstatus', function(req, res) {
     connection.query("SELECT count(file_Name) AS count FROM FILE", function(err, results, fields) {
         if (err) {
             console.log('Encountered error when counting file_Name fields in the FILE table: ' + err)
-            return res.status(500).send(err);
+            return res.status(500).send(err.sqlMessage);
         }
 
         toReturn += results[0].count + " files, ";
@@ -317,7 +387,7 @@ app.get('/DBstatus', function(req, res) {
         connection.query("SELECT count(event_id) AS count FROM EVENT", function(err, results, fields) {
             if (err) {
                 console.log('Encountered error when counting event_id fields in the EVENT table: ' + err);
-                return res.status(500).send(err);
+                return res.status(500).send(err.sqlMessage);
             }
 
             toReturn += results[0].count + " events, and ";
@@ -325,7 +395,7 @@ app.get('/DBstatus', function(req, res) {
                 connection.query("SELECT count(alarm_id) AS count FROM ALARM", function(err, results, fields) {
                 if (err) {
                     console.log('Encountered error when counting alarm_id fields in the ALARM table: ' + err);
-                    return res.status(500).send(err);
+                    return res.status(500).send(err.sqlMessage);
                 }
 
                 toReturn += results[0].count + " alarms";
@@ -336,8 +406,66 @@ app.get('/DBstatus', function(req, res) {
 });
 
 
+app.get('/getEventsSorted', function(req, res) {
+    if (connection === undefined) {
+        return res.status(401).send('Not logged into database: connection failed');
+    }
+
+    connection.query("SELECT * FROM EVENT ORDER BY start_time", function(err, rows, fields) {
+        if (err) {
+            console.log('Encountered error when attempting to select every row in the table ' + req.params.tableName);
+            return res.status(500).send(err.sqlMessage);
+        }
+
+        res.status(200).send(rows);
+    });
+});
 
 
+// Gets every event with the file_Name row entry equal to the filename passed to the endpoint
+app.get('/getEventsFromFile/:filename', function(req, res) {
+    if (connection === undefined) {
+        return res.status(401).send('Not logged in to database: connection failed');
+    }
+
+    if (req.params.filename === undefined || req.params.filename === '') {
+        return res.status(500).send('Missing required filename parameter');
+    }
+
+    connection.query("SELECT cal_id FROM FILE WHERE file_Name='" + req.params.filename + "'", function(err, rows, fields) {
+        if (err) {
+            console.log('Encountered error when getting FILE entry "' + req.params.filename + "': " + err);
+            return res.status(500).send(err.sqlMessage);
+        }
+
+        connection.query("SELECT start_time,summary FROM EVENT WHERE cal_file=" + rows[0].cal_id + " ORDER BY start_time", function(err, rows, fields) {
+            if (err) {
+                console.log('Encountered error when getting EVENT entries from "' + req.params.filename + "': " + err);
+                return res.status(500).send(err.sqlMessage);
+            }
+
+            return res.status(200).send(rows);
+        });
+    });
+});
+
+
+// Returns every Event from the database that start at the same time
+app.get('/getEventConflicts', function(req, res) {
+    if (connection === undefined) {
+        return res.status(401).send('Not logged in to database: connection failed');
+    }
+
+    // Use an inner self-join with the EVENT table to find all events with the same start time (without duplicating itself)
+    connection.query("SELECT a.start_time,a.summary,a.organizer FROM EVENT AS a, EVENT AS b WHERE a.start_time=b.start_time AND a.event_id<>b.event_id ORDER BY start_time", function(err, rows, fields) {
+        if (err) {
+            console.log('Encountered error when performing self-join to find duplicate start_time properties in the EVENT table');
+            return res.status(500).send(err.sqlMessage);
+        }
+
+        return res.status(200).send(rows);
+    });
+});
 
 
 // Disconnects from the database

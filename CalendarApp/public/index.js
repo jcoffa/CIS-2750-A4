@@ -185,7 +185,7 @@ function getFormData(form) {
 }
 
 // Outputs a reasonable error message to the Status Panel
-function errorMsg(message, error) {
+function errorMsg(message, error, sql=false) {
     statusMsg('\n' + message + ': ' + error.responseText + ' (' + error.status + ': ' + error.statusText + ')');
 }
 
@@ -301,6 +301,36 @@ function createCalendar(formData) {
     return toReturn;
 }
 
+function addSQLeventsToTable(rows, sum=true, loc=true, org=true) {
+    var markup = "";
+    console.log(rows);
+    for (let evt of rows) {
+        console.log(evt);
+        let date = evt.start_time.split('T')[0]
+        let time = evt.start_time.split('T')[1]
+
+        markup += "<tr><td>" + date + "</td>";
+        markup += "<td>" + (time.slice(-1) === 'Z' ? time.split('.')[0] + " (UTC)" : time.split('.')[0]) + "</td>";
+
+        if (sum) {
+            console.log("Summary: " + evt.summary);
+            markup += "<td>" + (evt.summary === null || evt.summary === undefined ? "" : evt.summary) + "</td>";
+        }
+        if (loc) {
+            console.log("Location: " + evt.location);
+            markup += "<td>" + (evt.location === null || evt.location === undefined ? "" : evt.location) + "</td>";
+        }
+        if (org) {
+            console.log("Organizer: " + evt.organizer);
+            markup += "<td>" + (evt.organizer === null || evt.organizer === undefined ? "" : evt.organizer) + "</td>";
+        }
+        markup += "</tr>";
+        console.log("\n");
+    }
+
+    $('#queryTableBody').html(markup);
+}
+
 
 
 
@@ -341,6 +371,12 @@ $(document).ready(function() {
     $('#clearDatabaseButton').prop('disabled', true);
     $('#displayDBStatusButton').prop('disabled', true);
     $('#executeQueryButton').prop('disabled', true);
+    $('#allEventsQuery').prop('disabled', true);
+    $('#allEventsFileQuery').prop('disabled', true);
+    $('#allConflictsQuery').prop('disabled', true);
+    //$('#').prop('disabled', ture);
+    //$('#').prop('disabled', true);
+    //$('#').prop('disabled', true);
 
 
 
@@ -660,6 +696,7 @@ $(document).ready(function() {
             data: formData,
             success: function() {
                 console.log("Successfully logged into database using endpoint '/databaseLogin'!");
+                statusMsg("Logged in to database successfully. Checking availability of tables...");
                 $('#databaseLoginModal').css('display', 'none');
 
                 // Remove the standout style from the login button
@@ -675,11 +712,31 @@ $(document).ready(function() {
                 $('#clearDatabaseButton').prop('disabled', false);
                 $('#displayDBStatusButton').prop('disabled', false);
                 $('#executeQueryButton').prop('disabled', false);
+                $('#allEventsQuery').prop('disabled', false);
+                $('#allEventsFileQuery').prop('disabled', false);
+                $('#allConflictsQuery').prop('disabled', false);
+                //$('#').prop('disabled', false);
+                //$('#').prop('disabled', false);
+                //$('#').prop('disabled', false);
+
+                // Verify that all the tables exist, and if they don't, create them
+                $.ajax({
+                    url: '/createTables',
+                    type: 'GET',
+                    success: function() {
+                        statusMsg('All database tables are available');
+                    },
+                    error: function(err) {
+                        errorMsg('Encountered an error when verifying the availability of the database tables', err);
+                    }
+                });
             },
             error: function(err) {
                 alert('Could not login to database with those credentials.\nPlease ensure that you have correctly entered your username, password, and database name, and try again.');
             }
         });
+
+        $('#displayDBStatusButton').click();
     });
 
 
@@ -708,6 +765,8 @@ $(document).ready(function() {
                 errorMsg('Encountered error while loading all saved .ics files', err);
             }
         });
+
+        $('#displayDBStatusButton').click();
     });
 
 
@@ -728,6 +787,8 @@ $(document).ready(function() {
                 errorMsg('Encountered error when trying to clear the database', err);
             }
         });
+
+        $('#displayDBStatusButton').click();
     });
 
 
@@ -748,15 +809,114 @@ $(document).ready(function() {
     });
 
 
-    // Execute query (open a modal)
-    $('#executeQueryButton').click(function() {
+
+    /*******************
+     * Execute Queries *
+     *******************/
+
+     // Close query output modal
+     $('#closeModalQuery').click(function() {
         $(this).blur();
-        $('#executeQueryModal').css('display', 'block');
+        $('#queryOutputModal').css('display', 'none');
+     });
+
+    $('#allEventsQuery').click(function() {
+        $(this).blur();
+
+        $.ajax({
+            url: '/getEventsSorted',
+            type: 'GET',
+            dataType: 'json',
+            success: function(rows) {
+                // Setup the table header for events from the database
+                let hmarkup = "<tr><th width='10%'>Start Date<br>YYY/MM/DD</th><th width='10%'>Start Time<br>HH:MM:SS</th>"
+                hmarkup += "<th width='26.7%'>Summary</th><th width='26.6%'>Location</th><th width='26.6%'>Organizer</th></tr>"
+                $('#queryTableHead').html(hmarkup);
+
+                // Add all the retrieved events
+                addSQLeventsToTable(rows);
+
+                $('#queryOutputModal').css('display', 'block');
+            },
+            error: function(err) {
+                errorMsg('Encountered an error when trying to display all events in the database', err);
+            }
+        });
     });
-    $('#closeModalQuery').click(function() {
-        (this).blur();
-        $('#executeQueryModal').css('display', 'none');
+
+    $('#allEventsFileQuery').click(function() {
+        $(this).blur();
+        
+        // Get selected calendar from File selector
+        var filename = $('#fileSelector').find(':selected').val();
+
+        $.ajax({
+            url: 'getEventsFromFile/' + filename,
+            type: 'GET',
+            dataType: 'json',
+            success: function(rows) {
+                // Setup the table header for events from the database
+                // (Assignment description says to only use start_time and summary)
+                let hmarkup = "<tr><th width='10%'>Start Date<br>YYY/MM/DD</th>";
+                hmarkup += "<th width='10%'>Start Time<br>HH:MM:SS</th><th>Summary</th></tr>";
+                $('#queryTableHead').html(hmarkup);
+
+                // Add all the retrieved events
+                addSQLeventsToTable(rows, sum=true, loc=false, org=false);
+
+                $('#queryOutputModal').css('display', 'block');
+            },
+            error: function(err) {
+                errorMsg('Encountered error when attempting to get all Events from the file "'+filename+'"', err);
+            }
+        });
     });
+
+    $('#allConflictsQuery').click(function() {
+        $(this).blur();
+
+        $.ajax({
+            url: '/getEventConflicts',
+            type: 'GET',
+            dataType: 'json',
+            success: function(rows) {
+                // Setup the table header for events from the database
+                // (Assignment description says to only use start_time, summary, and organizer)
+                let hmarkup = "<tr><th width='10%'>Start Date<br>YYY/MM/DD</th><th width='10%'>Start Time<br>HH:MM:SS</th>"
+                hmarkup += "<th width='40%'>Summary</th><th width='40%'>Organizer</th></tr>"
+                $('#queryTableHead').html(hmarkup);
+
+                // Add all the retrieved events
+                addSQLeventsToTable(rows, sum=true, loc=false, org=true);
+
+                $('#queryOutputModal').css('display', 'block');
+            },
+            error: function(err) {
+                errorMsg('Encountered an error when attempting to display all conflicting Events from the database', err);
+            }
+        });
+    });
+
+    /*
+    $('#').click(function() {
+        $(this).blur();
+    
+    });
+    */
+
+    /*
+    $('#').click(function() {
+        $(this).blur();
+
+    });
+    */
+
+    /*
+    $('#').click(function() {
+        $(this).blur();
+
+    });
+    */
 
 
 
