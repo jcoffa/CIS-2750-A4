@@ -193,8 +193,7 @@ app.post('/writeCalendarJSON', function(req, res) {
 // Sets up the connection variable to the MySQL database
 app.post('/databaseLogin', function(req, res) {
     connection = mysql.createConnection({
-//        host     : 'dursley.socs.uoguelph.ca',
-        host     : 'localhost',
+        host     : 'dursley.socs.uoguelph.ca',
         user     : req.body.username,
         password : req.body.password,
         database : req.body.databaseName
