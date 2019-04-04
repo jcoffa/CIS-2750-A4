@@ -173,11 +173,17 @@
         <button id="allEventsQuery" disabled>Display All Events Sorted by Date</button><br>
         <button id="allEventsFileQuery" disabled>Display All Events From Selected Calendar File to View</button><br>
         <button id="allConflictsQuery" disabled>Display All Conflicting Events</button><br>
-        <button id="allAlarmsQuery" disabled>TODO Display All Alarms From Selected Calendar File to View</button><br>
-        <button id="allAlarmsSameTimeQuery" disabled>TODO Display All Alarms That Will Go Off at the Same Time</button><br>
-        <button id="allEventsSameDayQuery" disabled>TODO Display All Events Happening On a Given Day</button>
-        <label for="eventDay">Day to get events for: </label>
-        <input id="eventDay" type="date" name="date"></input>
+        <button id="allAlarmsFileQuery" disabled>Display All Alarms From Selected Calendar File to View</button><br>
+        <form id="queryEventNumForm">
+            <button id="allCalsWithEventsNum" disabled>Display All Calendars That Have at Least a Certain Number of Events</button>
+            <label for="eventNumber">Minimum number of Events: </label>
+            <input id="eventNumber" type="number" min="0" name="numEvents" required></input>
+        </form>
+        <form id="queryEventForm">
+            <button id="allEventsSameDayQuery" disabled>Display All Events Happening On a Given Day</button>
+            <label for="eventDay">Day to get events for: </label>
+            <input id="eventDay" type="date" name="date" required></input>
+        </form>
         </div>
         <!-- There are also 2 modal windows associated with A4 functionality -->
 
@@ -218,7 +224,7 @@
         <div id="queryOutputModal" class="modal">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h2>Query Output</h2>
+                    <h2 id="queryModalTitle">Query Output</h2>
                     <span id="closeModalQuery" class="close">X</span>
                 </div>
                 <div class="modal-body">
