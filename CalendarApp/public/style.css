@@ -90,6 +90,8 @@ button {
     cursor: pointer;
     margin-left: 10px;
     margin-right: 10px;
+    margin-top: 2.5px;
+    margin-bottom: 2.5px;
 }
 button:focus {
     background-color: #404099;
