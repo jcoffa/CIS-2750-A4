@@ -301,16 +301,22 @@ function createCalendar(formData) {
     return toReturn;
 }
 
-function addSQLeventsToTable(rows, sum=true, loc=true, org=true) {
+function addSQLeventsToTable(rows, onlydate=false, onlytime=false, sum=true, loc=true, org=true) {
     var markup = "";
-    console.log(rows);
     for (let evt of rows) {
-        console.log(evt);
+        markup += "<tr>";
+
         let date = evt.start_time.split('T')[0]
         let time = evt.start_time.split('T')[1]
 
-        markup += "<tr><td>" + date + "</td>";
-        markup += "<td>" + (time.slice(-1) === 'Z' ? time.split('.')[0] + " (UTC)" : time.split('.')[0]) + "</td>";
+        if (onlydate) {
+            markup += "<td>" + date + "</td>";
+        } else if (onlytime) {
+            markup += "<td>" + (time.slice(-1) === 'Z' ? time.split('.')[0] + " (UTC)" : time.split('.')[0]) + "</td>";
+        } else {
+            markup += "<td>" + date + "</td>";
+            markup += "<td>" + (time.slice(-1) === 'Z' ? time.split('.')[0] + " (UTC)" : time.split('.')[0]) + "</td>";
+        }
 
         if (sum) {
             console.log("Summary: " + evt.summary);
@@ -326,6 +332,32 @@ function addSQLeventsToTable(rows, sum=true, loc=true, org=true) {
         }
         markup += "</tr>";
         console.log("\n");
+    }
+
+    $('#queryTableBody').html(markup);
+}
+
+function addSQLalarmsToTable(rows) {
+    var markup = "";
+
+    for (let alarm of rows) {
+        markup += "<tr><td>" + alarm.action + "</td>";
+        markup += "<td>" + alarm.trigger + "</td></tr>";
+    }
+
+    $('#queryTableBody').html(markup);
+}
+
+
+
+
+function addSQLcalendarsToTable(rows) {
+    var markup = "";
+
+    for (let cal of rows) {
+        markup += "<tr><td>" + cal.file_Name + "</td>";
+        markup += "<td>" + cal.version + "</td>";
+        markup += "<td>" + cal.prod_id + "</td></tr>";
     }
 
     $('#queryTableBody').html(markup);
@@ -374,9 +406,9 @@ $(document).ready(function() {
     $('#allEventsQuery').prop('disabled', true);
     $('#allEventsFileQuery').prop('disabled', true);
     $('#allConflictsQuery').prop('disabled', true);
-    //$('#').prop('disabled', ture);
-    //$('#').prop('disabled', true);
-    //$('#').prop('disabled', true);
+    $('#allAlarmsFileQuery').prop('disabled', true);
+    $('#allCalsWithEventsNum').prop('disabled', true);
+    $('#allEventsSameDayQuery').prop('disabled', true);
 
 
 
@@ -715,9 +747,9 @@ $(document).ready(function() {
                 $('#allEventsQuery').prop('disabled', false);
                 $('#allEventsFileQuery').prop('disabled', false);
                 $('#allConflictsQuery').prop('disabled', false);
-                //$('#').prop('disabled', false);
-                //$('#').prop('disabled', false);
-                //$('#').prop('disabled', false);
+                $('#allAlarmsFileQuery').prop('disabled', false);
+                $('#allCalsWithEventsNum').prop('disabled', false);
+                $('#allEventsSameDayQuery').prop('disabled', false);
 
                 // Verify that all the tables exist, and if they don't, create them
                 $.ajax({
@@ -753,7 +785,11 @@ $(document).ready(function() {
                         url: '/insertIntoDB/' + filename,
                         type: 'GET',
                         success: function(successFilename) {
-                            statusMsg('Successfully added ' + successFilename + ' to the database');
+                            if (successFilename.alreadyContained !== undefined) {
+                                statusMsg(successFilename.message);
+                            } else {
+                                statusMsg('Successfully added ' + successFilename + ' to the database');
+                            }
                         },
                         error: function(err) {
                             errorMsg('Encountered error while putting a file into the database', err);
@@ -822,6 +858,7 @@ $(document).ready(function() {
 
     $('#allEventsQuery').click(function() {
         $(this).blur();
+        $('#queryModalTitle').html('All Events From Every Calendar');
 
         $.ajax({
             url: '/getEventsSorted',
@@ -846,9 +883,12 @@ $(document).ready(function() {
 
     $('#allEventsFileQuery').click(function() {
         $(this).blur();
+
         
         // Get selected calendar from File selector
         var filename = $('#fileSelector').find(':selected').val();
+
+        $('#queryModalTitle').html('All Events From the "' + filename + '" Calendar');
 
         $.ajax({
             url: 'getEventsFromFile/' + filename,
@@ -857,12 +897,12 @@ $(document).ready(function() {
             success: function(rows) {
                 // Setup the table header for events from the database
                 // (Assignment description says to only use start_time and summary)
-                let hmarkup = "<tr><th width='10%'>Start Date<br>YYY/MM/DD</th>";
+                let hmarkup = "<tr><th width='10%'>Start Date<br>YYYY-MM-DD</th>";
                 hmarkup += "<th width='10%'>Start Time<br>HH:MM:SS</th><th>Summary</th></tr>";
                 $('#queryTableHead').html(hmarkup);
 
                 // Add all the retrieved events
-                addSQLeventsToTable(rows, sum=true, loc=false, org=false);
+                addSQLeventsToTable(rows, false, false, true, false, false);
 
                 $('#queryOutputModal').css('display', 'block');
             },
@@ -874,6 +914,8 @@ $(document).ready(function() {
 
     $('#allConflictsQuery').click(function() {
         $(this).blur();
+
+        $('#queryModalTitle').html('All Events That Occur on The same Day As Another Event');
 
         $.ajax({
             url: '/getEventConflicts',
@@ -887,7 +929,7 @@ $(document).ready(function() {
                 $('#queryTableHead').html(hmarkup);
 
                 // Add all the retrieved events
-                addSQLeventsToTable(rows, sum=true, loc=false, org=true);
+                addSQLeventsToTable(rows, false, false, true, false, true);
 
                 $('#queryOutputModal').css('display', 'block');
             },
@@ -897,26 +939,90 @@ $(document).ready(function() {
         });
     });
 
-    /*
-    $('#').click(function() {
-        $(this).blur();
-    
-    });
-    */
-
-    /*
-    $('#').click(function() {
+    $('#allAlarmsFileQuery').click(function() {
         $(this).blur();
 
-    });
-    */
+        var filename = $('#fileSelector').find(':selected').val();
 
-    /*
-    $('#').click(function() {
+        $('#queryModalTitle').html('List of All Alarms From Every Event in the "' + filename + '" Calendar');
+
+        $.ajax({
+            url: '/getAlarms/' + filename,
+            type: 'GET',
+            dataType: 'json',
+            success: function(rows) {
+                // Setup the table header for alarms from the database
+                let hmarkup = "<tr><th width='25%'>Action</th><th>Trigger</th>"
+                $('#queryTableHead').html(hmarkup);
+
+                addSQLalarmsToTable(rows);
+
+                $('#queryOutputModal').css('display', 'block');
+            },
+            error: function(err) {
+                errorMsg('Encountered an error when attempting to get all the alarms from the file"' + filename + '"', err);
+            }
+        });
+    });
+
+    $('#allCalsWithEventsNum').click(function(e) {
+        e.preventDefault();
         $(this).blur();
 
+        var formData = getFormData($('#queryEventNumForm'));
+
+        $('#queryModalTitle').html('All Calendars With at Least ' + formData.numEvents + ' Events');
+
+        $.ajax({
+            url: '/getCalsWithNumEvents/' + formData.numEvents,
+            type: 'GET',
+            dataType: 'json',
+            success: function(rows) {
+                console.log(rows);
+                let hmarkup = "<tr><th>File Name</th><th width='5%'>Version</th><th width='50%'>Product ID</th></tr>";
+                $('#queryTableHead').html(hmarkup);
+
+                addSQLcalendarsToTable(rows);
+
+                $('#queryOutputModal').css('display', 'block');
+            },
+            error: function(err) {
+                errorMsg('Encountered an error when attempting to get all Calendars with at least ' + formData.number + ' events', err);
+            }
+        });
     });
-    */
+
+    $('#allEventsSameDayQuery').click(function(e) {
+        e.preventDefault();
+        $(this).blur();
+
+        if (!formHasAllRequired('queryEventForm')) {
+            return;
+        }
+
+        var formData = getFormData($('#queryEventForm'));
+
+        $('#queryModalTitle').html('All Events That Occur on ' + formData.date);
+
+        $.ajax({
+            url: 'getEventsOnDate',
+            type: 'POST',
+            data: {'date': formData.date},
+            dataType: 'json',
+            success: function(rows) {
+                let hmarkup = "<tr><th width='10%'>Start Time<br>HH:MM:SS</th><th width='30%'>Summary</th>";
+                hmarkup += "<th width='30%'>Location</th><th width='30%'>Organizer</th></tr>";
+                $('#queryTableHead').html(hmarkup);
+
+                addSQLeventsToTable(rows, false, true);
+
+                $('#queryOutputModal').css('display', 'block');
+            },
+            error: function(err) {
+                errorMsg('Encountered error when trying to get all Events on the specified day from the database', err);
+            }
+        });
+    });
 
 
 
