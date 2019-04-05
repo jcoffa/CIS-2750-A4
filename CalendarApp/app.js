@@ -656,17 +656,5 @@ app.post('/getEventsOnDate', function(req, res) {
 });
 
 
-// Disconnects from the database
-app.get('/disconnectDB', function(req, res) {
-    if (connection === undefined) {
-        res.status(200).send('Not logged in, no connection termination necessary');
-        return;
-    }
-    connection.end();
-    console.log('Disconnected from database in /disconnectDB');
-    res.status(200).send('Disconnected database');
-});
-
-
 app.listen(portNum);
 console.log('Running app at localhost: ' + portNum);

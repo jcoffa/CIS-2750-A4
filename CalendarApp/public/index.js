@@ -1023,21 +1023,4 @@ $(document).ready(function() {
             }
         });
     });
-
-
-
-
-
-    /***************************************
-     * Close database connection on unload *
-     ***************************************/
-     window.addEventListener('beforeunload', function() {
-        $.ajax({
-            url: '/disconnectDB',
-            type: 'GET',
-            success: function() {
-                console.log('Successfully closed database connection');
-            }
-        });
-     });
 });
