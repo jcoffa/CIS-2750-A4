@@ -1,0 +1,10 @@
+BEGIN:VCALENDAR
+PRODID:-//Joseph Coffa/CIS*2750 iCalendar File Manager V1.0//EN
+VERSION:2.0
+BEGIN:VEVENT
+UID:1804289383
+DTSTAMP:20190322T174906
+DTSTART:19990708T123200Z
+SUMMARY:filename was entered as badExtension.txt, then fixed to the proper .ics extension
+END:VEVENT
+END:VCALENDAR

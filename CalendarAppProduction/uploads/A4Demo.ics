@@ -1,0 +1,64 @@
+BEGIN:VCALENDAR
+PRODID:-//Joseph Coffa/CIS*2750 iCalendar File Manager V1.1//EN
+VERSION:2.0
+BEGIN:VEVENT
+UID:1804289383
+DTSTAMP:20190402T012207
+DTSTART:20190405T090000Z
+SUMMARY:Assignment 4 is due!
+ORGANIZER:Professor Denis Nikitenko
+LOCATION:Sony Headquarters
+BEGIN:VALARM
+ACTION:AUDIO
+TRIGGER:Like, an hour before or something
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:1804289383
+DTSTAMP:20190402T012239
+DTSTART:20190405T090000Z
+SUMMARY:Assignment 4 is due! Again!
+ORGANIZER:Professor Denis Nikitenko
+LOCATION:Wherever you want to go
+BEGIN:VALARM
+ACTION:AUDIO
+TRIGGER:Maybe half an hour before now
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:1804289383
+DTSTAMP:20190402T012319
+DTSTART:20190405T090000Z
+SUMMARY:Assignment 4 is due! For a third time, just in case you missed the other two!
+ORGANIZER:Professor Denis Nikitenko
+LOCATION:Somewhere in the University of Guelph
+BEGIN:VALARM
+ACTION:AUDIO
+TRIGGER:Ok now it is 15 minutes before
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:846930886
+DTSTAMP:20190402T012559
+DTSTART:20190406T090000Z
+SUMMARY:Too bad for you, the assignment is a day late now. Sucks to suck.
+ORGANIZER:Literally nobody
+LOCATION:Your room. With all the lights off.
+BEGIN:VALARM
+ACTION:AUDIO
+TRIGGER:One minute after the assignment is due
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:112372988
+DTSTAMP:20190402T231900Z
+DTSTART:20190407T120000Z
+SUMMARY:It's two days after the assignment. Hope you haven't been crying too much.
+ORGANIZER:Your own sadness
+LOCATION:A galaxy far, far away
+BEGIN:VALARM
+ACTION:AUDIO
+TRIGGER:On event start
+END:VALARM
+END:VEVENT
+END:VCALENDAR

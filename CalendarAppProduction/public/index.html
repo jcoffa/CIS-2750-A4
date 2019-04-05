@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+
+<!-- # This file was retrieved as part of the A3 Stub, which contains mostly complete code just to get us started. 
+     # Any comments that are unindented and start with a '#' are copied from the 'A3 Stub Documentation.pdf' file,
+     # and were not part of the original document. -->
+
+<!-- # Language English, useful for accessibility -->
+<html lang="en">
+<!-- # The head contains metadata and script loading -->
+    <head>
+<!-- # Here is some metadata about the file, you can change those values to match your own -->
+        <title>iCalendar File Manager</title>
+        <meta name="description" content="Create, view, upload, and download virtual calendar (iCalendar) files">
+        <meta name="keywords" content="iCalendar, iCal, ics, University of Guelph, UoG, UofG, CIS*2750, CIS 2750, Angel, Angel of Death">
+        <meta name="author" content="Joseph Coffa">
+        <meta charset="utf-8">
+<!-- # This is useful for viewing on non-standard screens -->
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- # Here we are using a Content-Distribution-Network (CDN) to get quick loading
+     # bootstrap, jQuery libraries. Note you need internet access to load these
+     # (assuming they're not cached) -->
+        <!-- Load jquery, bootstrap -->
+        <script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8=" crossorigin="anonymous"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+
+<!-- # Here we're loading our custom Style -->
+        <!-- Custom CSS -->
+        <link rel="stylesheet" type="text/css" href="/style.css">
+        <!-- Custom CSS End -->
+    </head>
+
+
+
+<!-- # The body contains all of our elements, divs, tables, forms, ... -->
+
+    <!-- The body is where the actual meat of the website is written. You can add all the <div> elements, which are like
+         blank panels in Java where you can put stuff in. -->
+    <body>
+        <h1>iCalendar File Manager</h1>
+        <hr>
+
+
+
+
+
+        <!-- ============ -->
+        <!-- STATUS PANEL -->
+        <!-- ============ -->
+
+        <div align="center" style="overflow-y:auto">
+            <textarea id="statusText" cols="100" rows="4" name="Status Panel" placeHolder="Status Panel" readonly="readonly"></textarea>
+            <button id="clearStatusButton">Clear</button>
+            <!--<button type="button" onclick="addText('statusText', 'new text');">Clear</button>-->
+        </div>
+
+
+
+
+
+        <!-- ============== -->
+        <!-- FILE LOG PANEL -->
+        <!-- ============== -->
+
+        <hr>
+        <!-- Calendar file table -->
+        <h4><u>Saved Calendar Files</u></h4>
+        <div align="center"class="scrollTableDiv">
+            <table id="fileLogTable" class="maxRowTable">
+                <thead>
+                    <tr id="fileLogHeader">
+                        <th width="20%">File Name<br>(click to download)</th>
+                        <th width="5%">Version</th>
+                        <th width="55%">Product ID</th>
+                        <th width="10%">Number of<br>Properties</th>
+                        <th width="10%">Number of<br>Events</th>
+                    </tr>
+                </thead>
+                <tbody id="fileLogBody">
+                    <tr>
+                        <td></td>
+                        <td></td>
+                        <td>No files in system</td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div align="center">
+            <form enctype="multipart/form-data" id="uploadForm">
+                File to Upload: <input id="uploadFile" name="uploadFile" type="file" accept=".ics" style="margin-top: 15px"></input>
+                <button id="uploadButton">Upload</button>
+            </form>
+        </div>
+
+
+
+
+
+        <!-- =================== -->
+        <!-- CALENDAR VIEW PANEL -->
+        <!-- =================== -->
+
+        <hr>
+        <div class="clearfix">
+            <!-- Drop-down menu to select which file to view -->
+            <div align="center">
+                <button id="createCalendarButton" style="margin:15px;" class="standOut">Create A New Calendar From Scratch</button><br>
+                <label for="fileSelector">Calendar File to View:</label>
+                <select id="fileSelector" style="margin-left:10px;width:30em"></select>
+                <button id="addEventButton">Add a New Event to This Calendar</button>
+            </div>
+        </div>
+
+        <!-- 'Show Alarms/Optional Properties' Buttons -->
+
+        <h4><u>Event Table for Selected Calendar File to View</u></h4>
+        <div class="clearfix">
+            <button id="showPropertiesButton" style="margin:2px;">Show Optional Properties For Selected Event</button>
+            <button id="showAlarmsButton" style="margin:2px;">Show Alarms For Selected Event</button>
+        </div>
+
+        <!-- Table of Events -->
+
+        <div align="center" class="scrollTableDiv" style="margin-bottom:20px;">
+            <table id="eventTable" width="100%">
+                <thead>
+                    <tr>
+                        <th width="5%">Select</th>
+                        <th width="10%">Start Date<br>YYYY/MM/DD</th>
+                        <th width="10%">Start Time<br>HH:MM:SS</th>
+                        <th width="50%">Summary</th>
+                        <th width="15%">Number of<br>Properties</th>
+                        <th width="10%">Number of<br>Alarms</th>
+                    </tr>
+                </thead>
+                <tbody id="eventBody">
+                    <tr>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td>No files in system</td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div> 
+
+
+
+
+
+        <!-- ============ -->
+        <!-- A4 SQL Stuff -->
+        <!-- ============ -->
+        <hr>
+        <h4><u>Assignment 4 SQL Integration</u></h4>
+        <div align="center">
+            <button id="loginButton" class="standOut">Login to Database</button>
+            <button id="storeFilesButton" disabled>Store All Local Files Into Database</button>
+            <button id="clearDatabaseButton" disabled>Clear database</button>
+            <button id="displayDBStatusButton" disabled>Display Status of the Database</button>
+            <button id="executeQueryButton" disabled>Execute a Query on the Database</button>
+        </div>
+        <br>
+        <h5>Execute Queries</h5>
+        <div>
+        <button id="allEventsQuery" disabled>Display All Events Sorted by Date</button><br>
+        <button id="allEventsFileQuery" disabled>Display All Events From Selected Calendar File to View</button><br>
+        <button id="allConflictsQuery" disabled>Display All Conflicting Events</button><br>
+        <button id="allAlarmsFileQuery" disabled>Display All Alarms From Selected Calendar File to View</button><br>
+        <form id="queryEventNumForm">
+            <button id="allCalsWithEventsNum" disabled>Display All Calendars That Have at Least a Certain Number of Events</button>
+            <label for="eventNumber">Minimum number of Events: </label>
+            <input id="eventNumber" type="number" min="0" name="numEvents" required></input>
+        </form>
+        <form id="queryEventForm">
+            <button id="allEventsSameDayQuery" disabled>Display All Events Happening On a Given Day</button>
+            <label for="eventDay">Day to get events for: </label>
+            <input id="eventDay" type="date" name="date" required></input>
+        </form>
+        </div>
+        <!-- There are also 2 modal windows associated with A4 functionality -->
+
+        <!-- Put some whitespace at the bottom of the page -->
+        <br>
+        <br>
+
+
+
+
+
+        <!-- ====== -->
+        <!-- MODALS -->
+        <!-- ====== -->
+
+        <!-- 'Login to Database' Modal : A4 functionality-->
+        <div id="databaseLoginModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Login to Database</h2>
+                    <span id="closeModalLogin" class="close">X</span>
+                </div>
+                <div class="modal-body">
+                    <form id="loginForm">
+                        <label for="loginUsername">Username: </label>
+                        <input type="text" id="loginUsername" name="username"></input><br>
+                        <label for="loginPassword">Password: </label>
+                        <input type="password" id="loginPassword" name="password"></input><br>
+                        <label for="loginDatabaseName">Database Name: </label>
+                        <input type="text" id="loginDatabaseName" name="databaseName"></input><br>
+                        <button id="submitLogin">Login</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- The output of whatever query is entered goes here -->
+        <div id="queryOutputModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 id="queryModalTitle">Query Output</h2>
+                    <span id="closeModalQuery" class="close">X</span>
+                </div>
+                <div class="modal-body">
+                    <table id="queryTable" width="100%">
+                        <thead id="queryTableHead">
+                        </thead>
+                        <tbody id="queryTableBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 'Add Event to Current Calendar' Modal -->
+        <div id="addEventModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Add New Event</h2>
+                    <span id="closeModalEvent" class="close">X</span>
+                </div>
+                <div class="modal-body">
+                    <b>* Required</b>
+                    <form id="eventForm">
+                        <label for="eventStartDate">Start Date: </label>
+                        <input type="date" id="eventStartDate" name="startDate" required></input><b>*</b><br>
+                        <label for="eventStartTime">Start Time: </label>
+                        <input type="time" id="eventStartTime" name="startTime" required></input><b>*</b>
+                        <label for="eventStartTimeUTC" style="margin-left:4em;">UTC? </label>
+                        <input type="checkbox" id="eventStartTimeUTC" name="utc"></input><br>
+                        <label for="eventSummary">Summary: </label>
+                        <textarea id="eventSummary" name="summary" rows="4" cols="100"></textarea>
+                        <hr>
+                        <input type="reset" value="Reset All Fields">
+                        <button id="submitEvent">Add Event</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- 'Create a Brand New Calendar' Modal -->
+        <div id="createCalendarModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Create New Calendar</h2>
+                    <span id="closeModalCalendar" class="close">X</span>
+                </div>
+                <div class="modal-body">
+                    <b>* Required</b>
+                    <form id="calendarForm">
+                        <label for="calFileName">File Name: </label>
+                        <input type="text" name="fileName" required></input><b>*</b> <i>If no file extension is given, it will be assumed as a .ics file</i><br>
+                        <label for="calProductID">Product ID</label>
+                        <input type="text" id="calProductID" name="productID"><i>If not provided, one will be created for you</i></input>
+                        <hr>
+                        <h5><u>Event</u></h5>
+                        <label for="calEventStartDate">Start Date: </label>
+                        <input type="date" id="calEventStartDate" name="startDate" required></input><b>*</b><br>
+                        <label for="calEventStartTime">Start Time: </label>
+                        <input type="time" id="calEventStartTime" name="startTime" required></input><b>*</b>
+                        <label for="calEventStartTimeUTC" style="margin-left:4em;">UTC? </label>
+                        <input type="checkbox" id="calEventStartTimeUTC" name="utc"></input><br>
+                        <label for="calEventSummary">Summary: </label>
+                        <textarea id="calEventSummary" name="summary" rows="4" cols="100"></textarea>
+                        <hr>
+                        <input type="reset" value="Reset All Fields">
+                        <button id="submitCalendar">Create Calendar</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- 'View Properties of an Event' Modal -->
+        <div id="viewPropertiesModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Properties</h2>
+                    <span id="closeModalProperties" class="close">X</span>
+                </div>
+                <div class="modal-body">
+                    <div class="scrollTableDiv">
+                        <table width="100%">
+                            <thead>
+                                <tr>
+                                    <th>Property Name</th>
+                                    <th width="80%">Property Description</th>
+                                </tr>
+                            </thead>
+                            <tbody id="eventPropertyBody">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 'View Alarms in an Event' Modal -->
+        <div id="viewAlarmsModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Alarms</h2>
+                    <span id="closeModalAlarms" class="close">X</span>
+                </div>
+                <div class="modal-body">
+                    <div class="scrollTableDiv">
+                        <table width="100%">
+                            <thead>
+                                <tr>
+                                    <th>Alarm Action</th>
+                                    <th>Alarm Trigger</th>
+                                    <th width="70%">Alarm Properties</th>
+                                </tr>
+                            </thead>
+                            <tbody id="eventAlarmBody">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+
+        <!-- Leave me at the bottom of body -->
+        <script src="/index.js"></script>
+    </body>
+</html>
+
+
+
+
+
+
+
